@@ -1,20 +1,24 @@
 #include <iostream>
-#include "boost/asio.hpp"
+#include "src/Raft_server.h"
 
-void test_timer() {
-    boost::asio::io_context io_context;
-    boost::asio::steady_timer timer(io_context, std::chrono::seconds(1));
+int main(int argc, char* argv[]) {
+    if (argc != 4) {
+        std::cerr << "Usage: raft_node <port> <peer_port> <role>\n";
+        return 1;
+    }
 
-    timer.async_wait([](const boost::system::error_code& error) {
-        if (!error) {
-            std::cout << "Timer expired!" << std::endl;
-        }
-    });
+    short port = std::atoi(argv[1]);
+    short peer_port = std::atoi(argv[2]);
+    std::string role = argv[3];
 
-    io_context.run();
-}
+    RaftServer server;
+    server.AddNode(port, role);
 
-int main() {
-    test_timer();
+    if (peer_port != 0) {
+        server.ConnectNodes("127.0.0.1", peer_port);
+    }
+
+    server.Run();
+
     return 0;
 }

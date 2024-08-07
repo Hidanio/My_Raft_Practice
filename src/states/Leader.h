@@ -28,7 +28,7 @@ public:
         for (auto &follower: followers) {
             follower->WriteLog();
         }
-        SendMessageToPeer("testestest");
+      //  SendMessageToPeer("testestest");
     }
 
     bool WriteLog() override {
@@ -40,7 +40,7 @@ public:
     void SendHeartBeat() override {
         for (auto &follower: followers) {
             // send heartBeat
-            SendMessageToPeer("I am alive");
+          //  SendMessageToPeer("I am alive");
             std::cout << "HeartBeating to follower" << "\n";
         }
     }

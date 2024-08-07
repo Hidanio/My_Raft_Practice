@@ -3,23 +3,15 @@
 #include <iostream>
 #include "../Node.h"
 #include "../NetworkNode.h"
+#include "Candidate.h"
 
 class Follower : public NetworkNode {
 private:
     boost::asio::steady_timer electionTimer_;
 
 public:
-    Follower(boost::asio::io_context &io_context, short port) : NetworkNode(
-            io_context, port), electionTimer_(io_context) {
-        ResetElectionTimeout();
-    }
-
-    void receiveMessage(uint publisherId, int data) {
-        if (publisherId != leaderId_) {
-            return;
-        }
-
-        log_.push(data);
+    Follower(boost::asio::io_context &io_context, short port, int weight) : NetworkNode(
+            io_context, port, weight), electionTimer_(io_context) {
         ResetElectionTimeout();
     }
 
@@ -38,7 +30,9 @@ public:
         // Follower cast => Candidate and start election
         SetRole(NodeRole::Candidate);
         std::cout << "Election timeout, starting new election..." << "\n";
-
+        auto candidate = std::make_shared<Candidate>(io_context_
+        ,socket_.local_endpoint().port(), weight_);
+        candidate->StartElection();
     }
 
     void SendHeartBeat() override{
@@ -47,5 +41,19 @@ public:
 
     bool WriteLog() override{
         return false;
+    }
+
+    void HandleVoteResponse(const std::string &message) override{
+
+    }
+
+    void HandleVoteRequest(const std::string &message) override{
+        std::cout << "Received vote message" << "\n";
+
+    }
+
+    void HandleHeartBeat(const std::string &message) override{
+        std::cout << "Received heartBeat message: " << message << "\n";
+        ResetElectionTimeout();
     }
 };

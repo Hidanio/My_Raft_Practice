@@ -1,14 +1,20 @@
 #pragma once
 
 #include "../NetworkNode.h"
+#include "Leader.h"
 
 class Candidate : public NetworkNode {
 private:
     boost::asio::steady_timer electionTimer_;
     int votesReceived_;
 
+    void SendVoteRequest() {
+        std::string voteRequest = "RequestVote\n";
+        SendMessageToAllPeers(voteRequest);
+        std::cout << "Vote request send..." << "\n";
+    }
 public:
-    Candidate(boost::asio::io_context &io_context, short port) : NetworkNode(io_context, port),
+    Candidate(boost::asio::io_context &io_context, short port, int weight) : NetworkNode(io_context, port, weight),
                                                                  electionTimer_(io_context), votesReceived_(0) {
         StartElection();
     }
@@ -26,18 +32,26 @@ public:
         ResetElectionTimeout();
     }
 
-    void SendVoteRequest(){
-        std::string voteRequest = "RequestVote";
-        SendMessageToPeer(voteRequest);
-        std::cout << "Vote request send..." << "\n";
+    void HandleVoteResponse(const std::string &message) override{
+        if(message.find("VoteGranted") != std::string::npos){
+            ++votesReceived_;
+            std::cout << "Total votes: " << votesReceived_ << "\n";
+            if(votesReceived_ > peers_.size() / 2){
+                SetRole(NodeRole::Leader);
+                std::cout << "The king is dead, long live the king!" << "\n";
+                auto leader = std::make_shared<Leader>(io_context_,socket_.local_endpoint().port(),weight_);
+                leader->StartHeartBeat();
+            }
+        }
     }
 
-    void ReceiveVoteResponse(bool voteGranted){
-        if (voteGranted){
-            ++votesReceived_;
-        }
-        std::cout << "Total votes: " << votesReceived_ << "\n";
-        // logic for checking count of votes and become leader
+    void HandleHeartBeat(const std::string &message) override {
+        std::cout << "Received heartbeat as candidate: " << message << "\n";
+        SetRole(NodeRole::Follower);
+    }
+
+    void HandleVoteRequest(const std::string &message) override{
+
     }
 
     bool WriteLog() override {

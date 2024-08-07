@@ -15,11 +15,11 @@ public:
 
     void AddNode(short port, const std::string& role) {
         if (role == "follower") {
-            nodes_.emplace_back(std::make_shared<Follower>(io_context_, port));
+            nodes_.emplace_back(std::make_shared<Follower>(io_context_, port, 1));
         } else if (role == "leader") {
-            nodes_.emplace_back(std::make_shared<Leader>(io_context_, port));
+            nodes_.emplace_back(std::make_shared<Leader>(io_context_, port, 2));
         } else if (role == "candidate") {
-            nodes_.emplace_back(std::make_shared<Candidate>(io_context_, port));
+            nodes_.emplace_back(std::make_shared<Candidate>(io_context_, port, 1));
         }
     }
 

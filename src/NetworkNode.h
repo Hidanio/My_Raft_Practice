@@ -9,16 +9,21 @@
 using boost::asio::ip::tcp;
 
 class NetworkNode : public Node {
-private:
+protected:
     boost::asio::io_context &io_context_;
     tcp::acceptor acceptor_;
     tcp::socket socket_;
     std::vector<tcp::endpoint> peers_;
+    int weight_;
+    unsigned int votedFor_;
+    unsigned currentTerm_;
+    tcp::endpoint leaderId_;
 
 public:
-    NetworkNode(boost::asio::io_context &io_context, short port)
-            : io_context_(io_context), acceptor_(io_context, tcp::endpoint(tcp::v4(), port)), socket_(io_context) {
-        std::cout << "Node created on port " << port << "\n";
+    NetworkNode(boost::asio::io_context &io_context, short port, int weight)
+            : io_context_(io_context), acceptor_(io_context, tcp::endpoint(tcp::v4(), port)), socket_(io_context), weight_(weight), currentTerm_(0){
+        std::cout << "Node created on port " << port << " with weight " << weight_ << "\n";
+        role_ = NodeRole::Follower;
         StartAccept();
     }
 
@@ -66,6 +71,16 @@ public:
         }
     }
 
+    void ReceiveMessage(tcp::endpoint publisherId, const std::string &message){
+        if(message.find("RequestVote") != std::string::npos){
+            HandleVoteRequest(message);
+        } else if(message.find("VoteGranted") != std::string::npos){
+            HandleVoteResponse(message);
+        } else if(message.find("Heartbeat") != std::string::npos){
+            HandleHeartBeat(message);
+        }
+    }
+
     void HandleElectionTimeout() override {
         std::cout << "Election timeout, starting election process..." << "\n";
 // Start election
@@ -92,6 +107,7 @@ private:
                                           [this, self](boost::system::error_code ec, std::size_t length) {
                                               if (!ec) {
                                                   std::cout << "Received message: " << data_ << "\n";
+                                                  node_->ReceiveMessage(node_->leaderId_, data_);
                                                   data_.clear();
                                                   ReadMessage();
                                               }

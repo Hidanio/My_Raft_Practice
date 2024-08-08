@@ -14,8 +14,6 @@ protected:
     NodeRole role_;
 
 public:
-    bool isLeader = false;
-
     virtual bool WriteLog() = 0;
     virtual void HandleElectionTimeout() = 0;
     virtual void SendHeartBeat() = 0;

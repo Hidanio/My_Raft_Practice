@@ -13,13 +13,13 @@ private:
 public:
     RaftServer() = default;
 
-    void AddNode(short port, const std::string& role) {
+    void AddNode(short port, const std::string& role, int weight) {
         if (role == "follower") {
-            nodes_.emplace_back(std::make_shared<Follower>(io_context_, port, 1));
+            nodes_.emplace_back(std::make_shared<Follower>(io_context_, port, weight));
         } else if (role == "leader") {
-            nodes_.emplace_back(std::make_shared<Leader>(io_context_, port, 2));
+            nodes_.emplace_back(std::make_shared<Leader>(io_context_, port, weight));
         } else if (role == "candidate") {
-            nodes_.emplace_back(std::make_shared<Candidate>(io_context_, port, 1));
+            nodes_.emplace_back(std::make_shared<Candidate>(io_context_, port, weight));
         }
     }
 

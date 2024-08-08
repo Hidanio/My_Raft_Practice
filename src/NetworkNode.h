@@ -71,7 +71,7 @@ public:
         }
     }
 
-    void ReceiveMessage(tcp::endpoint publisherId, const std::string &message){
+    void ReceiveMessage(const std::string &message){
         if(message.find("RequestVote") != std::string::npos){
             HandleVoteRequest(message);
         } else if(message.find("VoteGranted") != std::string::npos){
@@ -79,6 +79,22 @@ public:
         } else if(message.find("Heartbeat") != std::string::npos){
             HandleHeartBeat(message);
         }
+    }
+
+    unsigned int GetCurrentTerm() {
+        return currentTerm_;
+    }
+
+    void SetCurrentTerm(unsigned int term){
+        currentTerm_ = term;
+    }
+
+    unsigned int extractTermFromMessage(const std::string &message) {
+        size_t pos = message.find("term=");
+        if (pos != std::string::npos) {
+            return std::stoi(message.substr(pos + 5));
+        }
+        return 0;
     }
 
     void HandleElectionTimeout() override {
@@ -107,7 +123,7 @@ private:
                                           [this, self](boost::system::error_code ec, std::size_t length) {
                                               if (!ec) {
                                                   std::cout << "Received message: " << data_ << "\n";
-                                                  node_->ReceiveMessage(node_->leaderId_, data_);
+                                                  node_->ReceiveMessage(data_);
                                                   data_.clear();
                                                   ReadMessage();
                                               }

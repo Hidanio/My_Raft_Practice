@@ -35,9 +35,9 @@ public:
     }
 
     void SendHeartBeat() override{
-        std::string heartbeat = "HeartBeat";
+        std::string heartbeat = "HeartBeat term=" + std::to_string(currentTerm_) + "\n";
         SendMessageToAllPeers(heartbeat);
-        std::cout << "Heartbeat send.." << "\n";
+        std::cout << "Heartbeat sent.." << "\n";
     }
 
     void StartHeartBeat() {

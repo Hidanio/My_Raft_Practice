@@ -48,12 +48,31 @@ public:
     }
 
     void HandleVoteRequest(const std::string &message) override{
-        std::cout << "Received vote message" << "\n";
+        std::cout << "Received vote request: " << message << "\n";
 
+        unsigned int term = extractTermFromMessage(message);
+
+        if (term > currentTerm_) {
+            currentTerm_ = term;
+            votedFor_ = 0;
+        }
+
+        if (votedFor_ == 0 || votedFor_ == term) {
+            votedFor_ = term;
+            std::string voteGranted = "VoteGranted term=" + std::to_string(currentTerm_) + "\n";
+            SendMessageToAllPeers(voteGranted);
+            ResetElectionTimeout();
+        }
     }
 
     void HandleHeartBeat(const std::string &message) override{
+        unsigned int receivedTerm = extractTermFromMessage(message);
+
+        if (receivedTerm >= currentTerm_) {
+            currentTerm_ = receivedTerm;
+          // SetRole(NodeRole::Follower);
+            ResetElectionTimeout();
+        }
         std::cout << "Received heartBeat message: " << message << "\n";
-        ResetElectionTimeout();
     }
 };

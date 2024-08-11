@@ -2,22 +2,20 @@
 
 #include <iostream>
 #include "../Node.h"
-#include "../NetworkNode.h"
+#include "../NetworkContext.h"
 #include "Candidate.h"
 
-class Follower : public NetworkNode {
+class Follower : public Node {
 private:
-    boost::asio::steady_timer electionTimer_;
 
 public:
-    Follower(boost::asio::io_context &io_context, short port, int weight) : NetworkNode(
-            io_context, port, weight), electionTimer_(io_context) {
+    Follower(boost::asio::io_context &io_context, short port, int weight) {
         ResetElectionTimeout();
     }
 
     void ResetElectionTimeout() {
         auto timeout = std::uniform_int_distribution<>(150, 300)(rng_);
-        electionTimer_.expires_after(std::chrono::milliseconds(timeout));
+        electionTimer_.expires_after((timeout));
         std::cout << "Election timeout is " << timeout << "ms" "\n";
         electionTimer_.async_wait([this](const boost::system::error_code &error) {
             if(!error){
@@ -50,7 +48,7 @@ public:
     void HandleVoteRequest(const std::string &message) override{
         std::cout << "Received vote request: " << message << "\n";
 
-        unsigned int term = extractTermFromMessage(message);
+        unsigned int term = ExtractTermFromMessage(message);
 
         if (term > currentTerm_) {
             currentTerm_ = term;
@@ -64,9 +62,16 @@ public:
             ResetElectionTimeout();
         }
     }
+    // remove it and move this logic (read Rcontext) and write to (Ocontext)
+    std::string DoWorkOnTimer(std::unique_ptr<Node> &node) override{
+        /*
+         * auto new_node = make_unique<Follower>(tis.weight, this.log, ...)
+         * swap(node, new_node)
+         * */
+    }
 
     void HandleHeartBeat(const std::string &message) override{
-        unsigned int receivedTerm = extractTermFromMessage(message);
+        unsigned int receivedTerm = ExtractTermFromMessage(message);
 
         if (receivedTerm >= currentTerm_) {
             currentTerm_ = receivedTerm;

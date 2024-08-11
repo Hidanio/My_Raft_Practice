@@ -1,21 +1,20 @@
 #pragma once
 
-#include "../NetworkNode.h"
+#include "../NetworkContext.h"
 #include "Leader.h"
 
-class Candidate : public NetworkNode {
+class Candidate : public Node {
 private:
     boost::asio::steady_timer electionTimer_;
     int votesReceived_;
 
-    void SendVoteRequest() {
-        std::string voteRequest = "RequestVote term=" + std::to_string(currentTerm_) + "\n";
-        SendMessageToAllPeers(voteRequest);
+    std::string SendVoteRequest() {
+        return "RequestVote term=" + std::to_string(currentTerm_) + "\n";
+        // SendMessageToAllPeers(voteRequest);
         std::cout << "Vote request send..." << "\n";
     }
 public:
-    Candidate(boost::asio::io_context &io_context, short port, int weight) : NetworkNode(io_context, port, weight),
-                                                                 electionTimer_(io_context), votesReceived_(0) {
+    Candidate() {
         StartElection();
     }
 
@@ -24,14 +23,21 @@ public:
         StartElection();
     }
 
-    void StartElection() {
-        votesReceived_ = 0;
+    std::string DoWorkOnTimer(std::unique_ptr<Node> &node) override {
+        auto new_node = std::make_unique<Candidate>();
+        auto message = new_node->StartElection();
+        swap(node, node);
+        return message;
+    }
+
+    std::string StartElection() {
+        votesReceived_ = 1;
         ++currentTerm_;
         votedFor_ = currentTerm_;
         std::cout << "Starting election..." << "\n";
 
-        SendVoteRequest();
-        ResetElectionTimeout();
+        return SendVoteRequest();
+      //  ResetElectionTimeout();
     }
 
     void HandleVoteResponse(const std::string &message) override {
@@ -50,7 +56,7 @@ public:
 
     void HandleHeartBeat(const std::string &message) override {
         std::cout << "Received heartbeat as candidate: " << message << "\n";
-        unsigned int receivedTerm = extractTermFromMessage(message);
+        unsigned int receivedTerm = ExtractTermFromMessage(message);
 
         if (receivedTerm > currentTerm_) {
             currentTerm_ = receivedTerm;
@@ -62,7 +68,7 @@ public:
     void HandleVoteRequest(const std::string &message) override {
         std::cout << "Received vote request: " << message << "\n";
 
-        unsigned int term = extractTermFromMessage(message);
+        unsigned int term = ExtractTermFromMessage(message);
 
         if (term > currentTerm_) {
             currentTerm_ = term;
@@ -81,6 +87,40 @@ public:
 
         return false;
     }
+
+
+    /*
+     * struct TimerContext {
+     *   string to_send;
+     *   Time next_timer_time_to_sleep;
+     *   unique_ptr<Node>& ref_to_node;
+     * }
+     *
+     *
+     * void setup_timer() {
+     *   timer.on(300ms, [](){
+     *     string s = node_strategy->get_on_timer();
+     *     tcp_send(s)
+     *     setup_timer();
+     *   });
+     * }
+     *
+     * leader:
+     * get_on_timer(TimerContext &ctx) {
+     *  ctx.to_send = "Send_all $term";
+     *  ctx.next_time = rand(100);
+     * }
+     *
+     * follower: {
+     *   ctx.to_send = "Lets select new leader"
+     *   auto new_node = make_unique<Candidate>(...);
+     *   swap(new_node, ref_to_node);
+     *   ctx.next_time = rand(300 ... 500);
+     * }
+     *
+     *
+     *
+     * */
 
     void ResetElectionTimeout() {
         auto timeout = std::uniform_int_distribution<>(150, 300)(rng_);

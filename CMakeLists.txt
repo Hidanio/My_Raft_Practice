@@ -11,7 +11,8 @@ add_executable(My_Raft_Practice main.cpp
         src/states/Leader.h
         src/states/Candidate.h
         src/Raft_server.h
-        src/NetworkNode.h)
+        src/NetworkContext.h
+        src/Contexts.h)
 
 target_link_libraries(My_Raft_Practice PRIVATE Boost::system)
 else ()

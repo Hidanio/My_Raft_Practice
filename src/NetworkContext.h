@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include <utility>
 #include <vector>
 #include <memory>
 #include <boost/asio.hpp>
@@ -8,22 +9,45 @@
 
 using boost::asio::ip::tcp;
 
-class NetworkNode : public Node {
+
+
+class NetworkContext {
 protected:
     boost::asio::io_context &io_context_;
     tcp::acceptor acceptor_;
     tcp::socket socket_;
     std::vector<tcp::endpoint> peers_;
-    int weight_;
-    unsigned int votedFor_;
-    unsigned currentTerm_;
     tcp::endpoint leaderId_;
+    std::unique_ptr<Node> node_;
+    boost::asio::steady_timer timer_;
 
+    void SetupTimer(std::chrono::milliseconds ms) {
+        timer_.expires_after(std::chrono::milliseconds(ms));
+        std::cout << "Election timeout is " << ms << "ms" "\n";
+        timer_.async_wait([this](const boost::system::error_code &error) {
+            if(!error){
+//                HandleElectionTimeout();
+              /*
+               * TimerCContext ctx{node_}; || or not...
+               * OContext octx;
+               * node_->on_timer(move(ctx, octx));
+               * if (octx.need_timer()) {
+               *   SetupTimer(octx.how_long_timer());
+               * }
+               * if (octx.message_need()) {
+               *
+               * }
+               * */
+            } else {
+                // looks like was canceled
+            }
+        });
+    }
 public:
-    NetworkNode(boost::asio::io_context &io_context, short port, int weight)
-            : io_context_(io_context), acceptor_(io_context, tcp::endpoint(tcp::v4(), port)), socket_(io_context), weight_(weight), currentTerm_(0){
-        std::cout << "Node created on port " << port << " with weight " << weight_ << "\n";
-        role_ = NodeRole::Follower;
+    NetworkContext(boost::asio::io_context &io_context, short port)
+            : io_context_(io_context), acceptor_(io_context, tcp::endpoint(tcp::v4(), port)), socket_(io_context),
+              timer_(io_context) {
+        std::cout << "Node created on port " << port << "\n";
         StartAccept();
     }
 
@@ -34,6 +58,8 @@ public:
                 peers_.push_back(peer);
                 std::make_shared<Session>(std::move(socket_), this)->Start();
                 std::cout << "Accepted connection from " << peer << "\n";
+                //potential node-> onAccept; <- we should understand which node?
+
             }
             StartAccept();
         });
@@ -53,6 +79,7 @@ public:
 
     void SendMessageToPeer(const tcp::endpoint &peer_endpoint, const std::string &message) {
         auto peer_socket = std::make_shared<tcp::socket>(io_context_);
+
         peer_socket->async_connect(peer_endpoint, [this, peer_socket, message](boost::system::error_code ec) {
             if (!ec) {
                 boost::asio::async_write(*peer_socket, boost::asio::buffer(message),
@@ -71,43 +98,26 @@ public:
         }
     }
 
-    void ReceiveMessage(const std::string &message){
-        if(message.find("RequestVote") != std::string::npos){
-            HandleVoteRequest(message);
-        } else if(message.find("VoteGranted") != std::string::npos){
-            HandleVoteResponse(message);
-        } else if(message.find("Heartbeat") != std::string::npos){
-            HandleHeartBeat(message);
+    void ReceiveMessage(std::string data, tcp::socket &socket) {
+        OContext o_context;
+        auto rem = socket.remote_endpoint();
+        //extract data
+        Message message{
+            std::optional{rem},
+            std::move(data)
+        };
+        RContext r_context{
+                message,
+                node_
+        };
+
+        node_->ReceiveMessage(std::move(r_context), o_context);
+        if (o_context.next_time_out) {
+            SetupTimer(o_context.next_time_out.value());
         }
-    }
-
-    unsigned int GetCurrentTerm() {
-        return currentTerm_;
-    }
-
-    void SetCurrentTerm(unsigned int term){
-        currentTerm_ = term;
-    }
-
-    unsigned int extractTermFromMessage(const std::string &message) {
-        size_t pos = message.find("term=");
-        if (pos != std::string::npos) {
-            return std::stoi(message.substr(pos + 5));
+        if (o_context.message) {
+            SendMessageToAllPeers(o_context.message.value());
         }
-        return 0;
-    }
-
-    void HandleElectionTimeout() override {
-        std::cout << "Election timeout, starting election process..." << "\n";
-// Start election
-    }
-
-    bool WriteLog() override {
-        return true;
-    }
-
-    void SendHeartBeat() override {
-// heartBeat
     }
 
 private:
@@ -115,15 +125,15 @@ private:
     private:
         tcp::socket socket_;
         std::string data_;
-        NetworkNode *node_;
+        NetworkContext *node_;
 
         void ReadMessage() {
             auto self(shared_from_this());
             boost::asio::async_read_until(socket_, boost::asio::dynamic_buffer(data_), '\n',
-                                          [this, self](boost::system::error_code ec, std::size_t length) {
+                                          [this, self, &socket_=socket_](boost::system::error_code ec, std::size_t length) {
                                               if (!ec) {
                                                   std::cout << "Received message: " << data_ << "\n";
-                                                  node_->ReceiveMessage(data_);
+                                                  node_->ReceiveMessage(data_, socket_);
                                                   data_.clear();
                                                   ReadMessage();
                                               }
@@ -131,7 +141,7 @@ private:
         }
 
     public:
-        Session(tcp::socket socket, NetworkNode *node)
+        Session(tcp::socket socket, NetworkContext *node)
                 : socket_(std::move(socket)), node_(node) {}
 
         void Start() {

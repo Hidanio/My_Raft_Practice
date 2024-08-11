@@ -4,14 +4,12 @@
 #include "Follower.h"
 #include <chrono>
 
-class Leader : public NetworkNode {
+class Leader : public Node {
 private:
-    boost::asio::steady_timer heartbeatTimer_;
 
 public:
     Leader(boost::asio::io_context &io_context, short port, int weight)
-            : NetworkNode(io_context, port, weight),
-              heartbeatTimer_(io_context) {
+    {
         StartHeartBeat();
     }
 

@@ -10,7 +10,6 @@
 using boost::asio::ip::tcp;
 
 
-
 class NetworkContext {
 protected:
     boost::asio::io_context &io_context_;
@@ -22,24 +21,27 @@ protected:
     boost::asio::steady_timer timer_;
 
     void SetupTimer(std::chrono::milliseconds ms) {
-        timer_.expires_after(std::chrono::milliseconds(ms));
-        std::cout << "Election timeout is " << ms << "ms" "\n";
+        timer_.expires_after(ms);
+        std::cout << "Election timeout is " << ms.count() << "ms\n";
         timer_.async_wait([this](const boost::system::error_code &error) {
-            if(!error){
-//                HandleElectionTimeout();
-              /*
-               * TimerCContext ctx{node_}; || or not...
-               * OContext octx;
-               * node_->on_timer(move(ctx, octx));
-               * if (octx.need_timer()) {
-               *   SetupTimer(octx.how_long_timer());
-               * }
-               * if (octx.message_need()) {
-               *
-               * }
-               * */
-            } else {
-                // looks like was canceled
+            if (!error) {
+                OContext o_context;
+                node_->OnTimer(o_context);
+
+                if (o_context.next_time_out) {
+                    SetupTimer(o_context.next_time_out.value());
+                }
+
+                if (o_context.message) {
+                    if (o_context.notifyAll) {
+                        SendMessageToAllPeers(o_context.message.value());
+                    } else {
+                        // maybe not leader ?
+                        SendMessageToPeer(leaderId_, o_context.message.value());
+                    }
+                }
+            } else if (error != boost::asio::error::operation_aborted) {
+                std::cerr << "Timer error: " << error.message() << "\n";
             }
         });
     }
@@ -58,7 +60,7 @@ public:
                 peers_.push_back(peer);
                 std::make_shared<Session>(std::move(socket_), this)->Start();
                 std::cout << "Accepted connection from " << peer << "\n";
-                //potential node-> onAccept; <- we should understand which node?
+                //potential node-> onAccept; <- should we understand which node?
 
             }
             StartAccept();
@@ -106,6 +108,7 @@ public:
             std::optional{rem},
             std::move(data)
         };
+
         RContext r_context{
                 message,
                 node_
@@ -115,8 +118,11 @@ public:
         if (o_context.next_time_out) {
             SetupTimer(o_context.next_time_out.value());
         }
-        if (o_context.message) {
+
+        if (o_context.notifyAll) {
             SendMessageToAllPeers(o_context.message.value());
+        } else {
+            SendMessageToPeer(r_context.message.sender.value(), o_context.message.value());
         }
     }
 

@@ -14,15 +14,14 @@ protected:
     std::stack<int> log_;
     std::mt19937 rng_{std::random_device{}()};
     NodeRole role_;
-    int weight_;
-    unsigned int votedFor_;
+    tcp::endpoint votedFor_;
     unsigned currentTerm_;
 
 public:
     virtual bool WriteLog() = 0;
     virtual void HandleElectionTimeout() = 0;
     virtual std::string SendHeartBeat() = 0;
-    virtual void HandleVoteRequest(const std::string &message) =0;
+    virtual void HandleVoteRequest(RContext r_context, OContext &Zapi) =0;
     virtual void HandleVoteResponse(const std::string &message) =0;
     virtual void HandleHeartBeat(const std::string &message) =0;
     virtual std::string DoWorkOnTimer(std::unique_ptr<Node> &node) =0;
@@ -40,7 +39,7 @@ public:
             SendMessageToAllPeers();
         }*/
         if (r_context.message.message.find("RequestVote") != std::string::npos) {
-            HandleVoteRequest(r_context.message);
+            HandleVoteRequest(r_context, Zapi);
         }
         using namespace std::chrono_literals;
         
@@ -71,5 +70,23 @@ public:
 
     void SetCurrentTerm(unsigned int term){
         currentTerm_ = term;
+    }
+
+    bool IsDefaultEndpoint(const boost::asio::ip::tcp::endpoint& endpoint) {
+        return (endpoint.address().is_unspecified() && endpoint.port() == 0);
+    }
+
+    void OnTimer(OContext &o_context) {
+        switch (role_) {
+            case NodeRole::Follower:
+                HandleElectionTimeout(o_context);
+                break;
+            case NodeRole::Candidate:
+                HandleElectionTimeout(o_context);
+                break;
+            case NodeRole::Leader:
+                SendHeartBeat(o_context);
+                break;
+        }
     }
 };

@@ -15,11 +15,14 @@ struct Message {
 };
 // write (output)
 struct OContext {
+    bool notifyAll = false;
     std::optional<std::chrono::milliseconds> next_time_out;
     std::optional<std::string> message;
+
     void send_msg(std::string s) {
         message = std::move(s);
     }
+
     void set_timer(std::chrono::milliseconds s) {
         next_time_out = s;
     }

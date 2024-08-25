@@ -4,7 +4,6 @@
 #include <random>
 #include <chrono>
 #include "boost/asio.hpp"
-#include "NetworkContext.h"
 #include "Contexts.h"
 
 enum class NodeRole {Candidate, Follower, Leader};

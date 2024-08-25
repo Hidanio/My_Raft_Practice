@@ -3,87 +3,25 @@
 #include <iostream>
 #include "../Node.h"
 #include "../NetworkContext.h"
-#include "Candidate.h"
+
+class Candidate;  // Forward declaration
 
 class Follower : public Node {
 private:
-
     bool isVoted = false;
+
 public:
-    Follower(unsigned term) {
-        currentTerm_ = term;
-        SetRole(NodeRole::Follower);
-    }
+    Follower(unsigned term);
 
-    bool WriteLog() override {
-        return false;
-    }
+    bool WriteLog() override;
 
-    void HandleVoteResponse(RContext r_context, OContext &o_context) override {
+    void HandleVoteResponse(RContext r_context, OContext &o_context) override;
 
-    }
+    void HandleVoteRequest(RContext r_context, OContext &o_context) override;
 
-    void HandleVoteRequest(RContext r_context, OContext &o_context) override {
-        std::cout << "Received vote request: " << r_context.message.message << "\n";
+    void HandleElectionTimeout(RContext r_context, OContext &o_context) override;
 
-        unsigned int term = ExtractTermFromMessage(r_context.message.message);
+    void HandleHeartBeat(RContext r_context, OContext &o_context) override;
 
-        if (term > currentTerm_) {
-            currentTerm_ = term;
-            votedFor_ = {};  // Сбросить голос, если term новый
-            isVoted = false;
-        }
-
-        if (isVoted) {
-            // return false
-            std::string voteNotGranted = "VoteGranted=false term=" + std::to_string(currentTerm_) + "\n";
-            o_context.send_msg(voteNotGranted);
-        }
-
-        auto sender_endpoint = r_context.message.sender.value();
-        // TODO: maybe not correct votedFor_ == r_context.message.sender | do we really duplicate response?
-        if (IsDefaultEndpoint(votedFor_) || votedFor_ == sender_endpoint) {
-            isVoted = true;
-            votedFor_ = sender_endpoint;
-            std::string voteGranted = "VoteGranted=true term=" + std::to_string(currentTerm_) + "\n";
-
-            o_context.send_msg(voteGranted);
-
-            auto timeout = std::uniform_int_distribution<>(150, 300)(rng_);
-            o_context.set_timer(std::chrono::milliseconds(timeout));
-        }
-    }
-
-    void HandleElectionTimeout(RContext r_context, OContext &o_context) override {
-        std::cout << "Follower election timeout. Becoming candidate..." << '\n';
-
-        auto new_candidate_node = std::make_unique<Candidate>(currentTerm_);
-
-        new_candidate_node->StartElection(r_context, o_context);
-        std::unique_ptr<Node> base_ptr = std::move(new_candidate_node);
-
-        std::swap(r_context.node_, base_ptr);
-    }
-
-    // remove it and move this logic (read Rcontext) and write to (Ocontext)
-/*    std::string DoWorkOnTimer(std::unique_ptr<Node> &node) override{
-        *//*
-         * auto new_node = make_unique<Follower>(tis.weight, this.log, ...)
-         * swap(node, new_node)
-         * *//*
-    }*/
-
-    void HandleHeartBeat(RContext r_context, OContext &o_context) override {
-        auto message = r_context.message.message;
-        unsigned int receivedTerm = ExtractTermFromMessage(message);
-
-        if (receivedTerm >= currentTerm_) {
-            currentTerm_ = receivedTerm;
-
-            // SetRole(NodeRole::Follower);
-            //     ResetElectionTimeout();
-        }
-
-        std::cout << "Received heartBeat message: " << message << "\n";
-    }
+    void SendHeartBeat(RContext r_context, OContext &o_context) override;
 };

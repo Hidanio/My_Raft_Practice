@@ -9,7 +9,6 @@
 
 using boost::asio::ip::tcp;
 
-
 class NetworkContext {
 protected:
     boost::asio::io_context &io_context_;
@@ -20,7 +19,7 @@ protected:
     std::unique_ptr<Node> node_;
     boost::asio::steady_timer timer_;
 
-    void SetupTimer(RContext r_context, std::chrono::milliseconds ms) {
+    void SetupTimer(const RContext& r_context, std::chrono::milliseconds ms) {
         timer_.expires_after(ms);
         std::cout << "Election timeout is " << ms.count() << "ms\n";
         timer_.async_wait([this, r_context](const boost::system::error_code &error) {
@@ -36,8 +35,7 @@ protected:
                     if (o_context.notifyAll) {
                         SendMessageToAllPeers(o_context.message.value());
                     } else {
-                        // maybe not leader ?
-                        SendMessageToPeer(leaderId_, o_context.message.value());
+                        SendMessageToPeer(r_context.message.sender.value(), o_context.message.value());
                     }
                 }
             } else if (error != boost::asio::error::operation_aborted) {

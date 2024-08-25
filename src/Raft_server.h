@@ -14,7 +14,7 @@ public:
     RaftServer() = default;
 
     void AddNode() {
-        nodes_.emplace_back(std::make_shared<Follower>());
+        nodes_.emplace_back(std::make_shared<Follower>(0));
     }
 
     void ConnectNodes(const std::string &host, const std::vector<short>& ports) {

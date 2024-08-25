@@ -19,33 +19,26 @@ protected:
 
 public:
     virtual bool WriteLog() = 0;
-    virtual void HandleElectionTimeout() = 0;
-    virtual std::string SendHeartBeat() = 0;
-    virtual void HandleVoteRequest(RContext r_context, OContext &Zapi) =0;
-    virtual void HandleVoteResponse(const std::string &message) =0;
-    virtual void HandleHeartBeat(const std::string &message) =0;
-    virtual std::string DoWorkOnTimer(std::unique_ptr<Node> &node) =0;
-    // virtual on_timer (uniq_ptr<Node>) <- heartbeat/election and etс
+    virtual void HandleElectionTimeout(RContext r_context,OContext &o_context) = 0;
+    virtual void SendHeartBeat(RContext r_context, OContext &o_context) = 0;
+    virtual void HandleVoteRequest(RContext r_context, OContext &o_context) =0;
+    virtual void HandleVoteResponse(RContext r_context, OContext &o_context) =0;
+    virtual void HandleHeartBeat(RContext r_context, OContext &o_context) =0;
 
-    void ReceiveMessage(RContext r_context, OContext &Zapi) {
-    /*    if (message.find("RequestVote") != std::string::npos) {
-            auto message=  node_->HandleVoteRequest(message);
-            SendMessageToAllPeers();
-        } else if (message.find("VoteGranted") != std::string::npos) {
-            auto message=  node_->HandleVoteResponse(message);
-            SendMessageToAllPeers();
-        } else if (message.find("Heartbeat") != std::string::npos) {
-            auto message=  node_->HandleHeartBeat(message);
-            SendMessageToAllPeers();
-        }*/
+    void ReceiveMessage(const RContext& r_context, OContext &o_context) {
         if (r_context.message.message.find("RequestVote") != std::string::npos) {
-            HandleVoteRequest(r_context, Zapi);
+            HandleVoteRequest(r_context, o_context);
+        } else if (r_context.message.message.find("VoteGranted") != std::string::npos) {
+            HandleVoteResponse(r_context, o_context);
+        } else if (r_context.message.message.find("Heartbeat") != std::string::npos) {
+            HandleHeartBeat(r_context, o_context);
         }
-        using namespace std::chrono_literals;
+
+/*        using namespace std::chrono_literals;
         
         
-        Zapi.send_msg("HB term=228 id=MyId");
-        Zapi.set_timer(100ms);
+        o_context.send_msg("HB term=228 id=MyId");
+        o_context.set_timer(100ms);*/
     }
 
     unsigned int ExtractTermFromMessage(const std::string &message) {
@@ -76,17 +69,19 @@ public:
         return (endpoint.address().is_unspecified() && endpoint.port() == 0);
     }
 
-    void OnTimer(OContext &o_context) {
+    void OnTimer(const RContext& r_context, OContext &o_context) {
         switch (role_) {
             case NodeRole::Follower:
-                HandleElectionTimeout(o_context);
+                HandleElectionTimeout(r_context, o_context);
                 break;
             case NodeRole::Candidate:
-                HandleElectionTimeout(o_context);
+                HandleElectionTimeout(r_context, o_context);
                 break;
             case NodeRole::Leader:
-                SendHeartBeat(o_context);
+                SendHeartBeat(r_context, o_context);
                 break;
         }
     }
+
+    virtual ~ Node()= default;
 };

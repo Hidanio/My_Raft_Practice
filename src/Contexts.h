@@ -37,4 +37,6 @@ struct CContext{
 struct RContext{
     Message message;
     std::unique_ptr<Node> &node_;
+    tcp::endpoint id;
+    unsigned totalPeers;
 };

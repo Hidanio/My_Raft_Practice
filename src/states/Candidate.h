@@ -2,71 +2,85 @@
 
 #include "../NetworkContext.h"
 #include "Leader.h"
+#include "Follower.h"
 
 class Candidate : public Node {
 private:
-    boost::asio::steady_timer electionTimer_;
-    int votesReceived_;
+    int votesReceived_ = 0;
 
-    std::string SendVoteRequest() {
-        return "RequestVote term=" + std::to_string(currentTerm_) + "\n";
-        // SendMessageToAllPeers(voteRequest);
-        std::cout << "Vote request send..." << "\n";
-    }
 public:
-    Candidate() {
-        StartElection();
+    Candidate(unsigned term) : votesReceived_(0) {
+        currentTerm_ = term;
+        SetRole(NodeRole::Candidate);
     }
 
-    void HandleElectionTimeout() override {
+    void HandleElectionTimeout(RContext r_context, OContext &o_context) override {
         std::cout << "Handling election timeout for candidates." << "\n";
-        StartElection();
+        StartElection(r_context, o_context);
     }
 
-    std::string DoWorkOnTimer(std::unique_ptr<Node> &node) override {
+/*    std::string DoWorkOnTimer(std::unique_ptr<Node> &node) override {
         auto new_node = std::make_unique<Candidate>();
         auto message = new_node->StartElection();
         swap(node, node);
         return message;
-    }
+    }*/
 
-    std::string StartElection() {
+    void StartElection(RContext r_context, OContext &o_context) {
         votesReceived_ = 1;
         ++currentTerm_;
-        votedFor_ = currentTerm_;
+        votedFor_ = r_context.id;
         std::cout << "Starting election..." << "\n";
 
-        return SendVoteRequest();
-      //  ResetElectionTimeout();
+        o_context.notifyAll = true;
+        auto timeout = std::uniform_int_distribution<>(150, 300)(rng_);
+        o_context.set_timer(std::chrono::milliseconds(timeout));
+        o_context.send_msg("RequestVote term=" + std::to_string(currentTerm_) + "\n");
     }
 
-    void HandleVoteResponse(const std::string &message) override {
-        if (message.find("VoteGranted") != std::string::npos) {
+    void HandleVoteResponse(RContext r_context, OContext &o_context) override {
+        if (r_context.message.message.find("VoteGranted") != std::string::npos) {
             ++votesReceived_;
             std::cout << "Total votes: " << votesReceived_ << "\n";
-            if (votesReceived_ > peers_.size() / 2) {
+            if (votesReceived_ > r_context.totalPeers / 2) {
                 SetRole(NodeRole::Leader);
                 std::cout << "The king is dead, long live the king!" << "\n";
-                auto leader = std::make_shared<Leader>(io_context_, socket_.local_endpoint().port(), weight_);
-                leader->SetCurrentTerm(currentTerm_);
-                leader->StartHeartBeat();
+
+                auto new_leader_node = std::make_unique<Leader>(currentTerm_);
+
+                new_leader_node->SendHeartBeat(r_context, o_context);
+                std::unique_ptr<Node> base_ptr = std::move(new_leader_node);
+
+                std::swap(r_context.node_, base_ptr);
             }
         }
     }
 
-    void HandleHeartBeat(const std::string &message) override {
+    //TODO: if we have message with data we should answer
+    void HandleHeartBeat(RContext r_context, OContext &o_context) override {
+        auto message = r_context.message.message;
+
         std::cout << "Received heartbeat as candidate: " << message << "\n";
         unsigned int receivedTerm = ExtractTermFromMessage(message);
 
         if (receivedTerm > currentTerm_) {
             currentTerm_ = receivedTerm;
-            SetRole(NodeRole::Follower);
-            ResetElectionTimeout();
+
+            auto new_follower_node = std::make_unique<Follower>(currentTerm_);
+
+            new_follower_node->StartElection(r_context, o_context);
+            std::unique_ptr<Node> base_ptr = std::move(new_follower_node);
+
+            auto timeout = std::uniform_int_distribution<>(150, 300)(rng_);
+            o_context.set_timer(std::chrono::milliseconds(timeout));
+
+            std::swap(r_context.node_, base_ptr);
         }
+
     }
 
-    void HandleVoteRequest(const std::string &message) override {
-        std::cout << "Received vote request: " << message << "\n";
+    void HandleVoteRequest(RContext r_context, OContext &o_context) override {
+/*        std::cout << "Received vote request: " << message << "\n";
 
         unsigned int term = ExtractTermFromMessage(message);
 
@@ -78,9 +92,8 @@ public:
         if (votedFor_ == 0 || votedFor_ == term) {
             votedFor_ = term;
             std::string voteGranted = "VoteGranted term=" + std::to_string(currentTerm_) + "\n";
-            SendMessageToAllPeers(voteGranted);
-            ResetElectionTimeout();
-        }
+
+        }*/
     }
 
     bool WriteLog() override {
@@ -122,19 +135,8 @@ public:
      *
      * */
 
-    void ResetElectionTimeout() {
-        auto timeout = std::uniform_int_distribution<>(150, 300)(rng_);
-        electionTimer_.expires_after(std::chrono::milliseconds(timeout));
-        std::cout << "Election timeout is " << timeout << "ms" "\n";
-        electionTimer_.async_wait([this](const boost::system::error_code &error) {
-            if(!error){
-                HandleElectionTimeout();
-            }
-        });
-    }
-
     // no
-    void SendHeartBeat() override {
+    void SendHeartBeat(RContext r_context, OContext &o_context) override {
 
     }
 };

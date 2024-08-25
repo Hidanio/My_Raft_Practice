@@ -20,16 +20,16 @@ protected:
     std::unique_ptr<Node> node_;
     boost::asio::steady_timer timer_;
 
-    void SetupTimer(std::chrono::milliseconds ms) {
+    void SetupTimer(RContext r_context, std::chrono::milliseconds ms) {
         timer_.expires_after(ms);
         std::cout << "Election timeout is " << ms.count() << "ms\n";
-        timer_.async_wait([this](const boost::system::error_code &error) {
+        timer_.async_wait([this, r_context](const boost::system::error_code &error) {
             if (!error) {
                 OContext o_context;
-                node_->OnTimer(o_context);
+                node_->OnTimer(r_context, o_context);
 
                 if (o_context.next_time_out) {
-                    SetupTimer(o_context.next_time_out.value());
+                    SetupTimer(r_context, o_context.next_time_out.value());
                 }
 
                 if (o_context.message) {
@@ -111,12 +111,14 @@ public:
 
         RContext r_context{
                 message,
-                node_
+                node_,
+                acceptor_.local_endpoint(),
+                static_cast<unsigned int>(peers_.size())
         };
 
         node_->ReceiveMessage(std::move(r_context), o_context);
         if (o_context.next_time_out) {
-            SetupTimer(o_context.next_time_out.value());
+            SetupTimer(r_context, o_context.next_time_out.value());
         }
 
         if (o_context.notifyAll) {

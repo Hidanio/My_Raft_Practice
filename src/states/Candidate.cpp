@@ -10,7 +10,7 @@ void Candidate::HandleElectionTimeout(RContext r_context, OContext &o_context) {
     StartElection(r_context, o_context);
 }
 
-void Candidate::StartElection(RContext r_context, OContext &o_context) {
+void Candidate::StartElection(const RContext& r_context, OContext &o_context) {
     votesReceived_ = 1;
     ++currentTerm_;
     votedFor_ = r_context.id;
@@ -19,15 +19,35 @@ void Candidate::StartElection(RContext r_context, OContext &o_context) {
     o_context.notifyAll = true;
     auto timeout = std::uniform_int_distribution<>(150, 300)(rng_);
     o_context.set_timer(std::chrono::milliseconds(timeout));
-    o_context.send_msg("RequestVote term=" + std::to_string(currentTerm_) + "\n");
+
+    std::string voteRequest = "RequestVote term=" + std::to_string(currentTerm_) + "\n";
+    o_context.send_msg(voteRequest);
+    std::cout << "Vote request sent to all peers." << "\n";
 }
 
 void Candidate::HandleVoteResponse(RContext r_context, OContext &o_context) {
-    if (r_context.message.message.find("VoteGranted") != std::string::npos) {
+    auto message = r_context.message.message;
+    unsigned int receivedTerm = ExtractTermFromMessage(message);
+
+    if (receivedTerm > currentTerm_) {
+        currentTerm_ = receivedTerm;
+        std::cout << "Received vote response with higher term. Becoming Follower." << "\n";
+
+        auto new_follower_node = std::make_unique<Follower>(currentTerm_);
+        std::unique_ptr<Node> base_ptr = std::move(new_follower_node);
+
+        auto timeout = std::uniform_int_distribution<>(150, 300)(rng_);
+        o_context.set_timer(std::chrono::milliseconds(timeout));
+
+        std::swap(r_context.node_, base_ptr);
+        return;
+    }
+
+    if (receivedTerm == currentTerm_ && message.find("VoteGranted") != std::string::npos) {
         ++votesReceived_;
         std::cout << "Total votes: " << votesReceived_ << "\n";
+
         if (votesReceived_ > r_context.totalPeers / 2) {
-            SetRole(NodeRole::Leader);
             std::cout << "The king is dead, long live the king!" << "\n";
 
             auto new_leader_node = std::make_unique<Leader>(currentTerm_);
@@ -36,8 +56,11 @@ void Candidate::HandleVoteResponse(RContext r_context, OContext &o_context) {
 
             std::swap(r_context.node_, base_ptr);
         }
+    } else {
+        std::cout << "Vote not granted or term mismatch. Ignoring response." << "\n";
     }
 }
+
 
 void Candidate::HandleHeartBeat(RContext r_context, OContext &o_context) {
     auto message = r_context.message.message;
@@ -55,11 +78,47 @@ void Candidate::HandleHeartBeat(RContext r_context, OContext &o_context) {
         o_context.set_timer(std::chrono::milliseconds(timeout));
 
         std::swap(r_context.node_, base_ptr);
+    } else if (receivedTerm == currentTerm_) {
+        //Received heartbeat with equal term, candidate should become Follower (another node become leader)
+        std::cout << "Received heartbeat with equal term. Becoming Follower." << "\n";
+
+        auto new_follower_node = std::make_unique<Follower>(currentTerm_);
+        std::unique_ptr<Node> base_ptr = std::move(new_follower_node);
+
+        auto timeout = std::uniform_int_distribution<>(150, 300)(rng_);
+        o_context.set_timer(std::chrono::milliseconds(timeout));
+
+        std::swap(r_context.node_, base_ptr);
+    } else {
+        std::cout << "Received heartbeat with lower term. Ignoring." << "\n";
     }
 }
 
+
 void Candidate::HandleVoteRequest(RContext r_context, OContext &o_context) {
-    // Реализация метода
+    auto message = r_context.message.message;
+
+    unsigned int receivedTerm = ExtractTermFromMessage(message);
+
+    if (receivedTerm > currentTerm_) {
+        currentTerm_ = receivedTerm;
+
+        auto new_follower_node = std::make_unique<Follower>(currentTerm_);
+        new_follower_node->HandleVoteRequest(r_context, o_context);
+        std::unique_ptr<Node> base_ptr = std::move(new_follower_node);
+
+        auto timeout = std::uniform_int_distribution<>(150, 300)(rng_);
+        o_context.set_timer(std::chrono::milliseconds(timeout));
+
+        std::swap(r_context.node_, base_ptr);
+    } else if (receivedTerm < currentTerm_) {
+        // The request is out of date, ignore it and send a refusal
+        std::string voteNotGranted = "VoteGranted=false term=" + std::to_string(currentTerm_) + "\n";
+        o_context.send_msg(voteNotGranted);
+    } else {
+        // The term matches, the candidate ignores the request, since he himself is participating in the elections
+        std::cout << "Ignoring vote request with equal term." << "\n";
+    }
 }
 
 bool Candidate::WriteLog() {
@@ -67,5 +126,5 @@ bool Candidate::WriteLog() {
 }
 
 void Candidate::SendHeartBeat(RContext r_context, OContext &o_context) {
-    // Реализация метода
+
 }

@@ -17,16 +17,16 @@ void Follower::HandleVoteResponse(RContext r_context, OContext &o_context) {
 void Follower::HandleVoteRequest(RContext r_context, OContext &o_context) {
     std::cout << "Received vote request: " << r_context.message.message << "\n";
 
-    unsigned int term = ExtractTermFromMessage(r_context.message.message);
+    unsigned int receivedTerm = ExtractTermFromMessage(r_context.message.message);
 
-    if (term > currentTerm_) {
-        currentTerm_ = term;
-        votedFor_ = {};  // Сбросить голос, если term новый
+    if (receivedTerm > currentTerm_) {
+        currentTerm_ = receivedTerm;
+        votedFor_ = {};  // Сбросить голос, если receivedTerm новый
         isVoted = false;
     }
 
     if (isVoted) {
-        std::string voteNotGranted = "VoteGranted=false term=" + std::to_string(currentTerm_) + "\n";
+        std::string voteNotGranted = "VoteGranted=false receivedTerm=" + std::to_string(currentTerm_) + "\n";
         o_context.send_msg(voteNotGranted);
     }
 
@@ -34,7 +34,7 @@ void Follower::HandleVoteRequest(RContext r_context, OContext &o_context) {
     if (IsDefaultEndpoint(votedFor_) || votedFor_ == sender_endpoint) {
         isVoted = true;
         votedFor_ = sender_endpoint;
-        std::string voteGranted = "VoteGranted=true term=" + std::to_string(currentTerm_) + "\n";
+        std::string voteGranted = "VoteGranted=true receivedTerm=" + std::to_string(currentTerm_) + "\n";
 
         o_context.send_msg(voteGranted);
 

@@ -13,7 +13,7 @@ public:
 
     void HandleElectionTimeout(RContext r_context, OContext &o_context) override;
 
-    void StartElection(RContext r_context, OContext &o_context);
+    void StartElection(const RContext& r_context, OContext &o_context);
 
     void HandleVoteResponse(RContext r_context, OContext &o_context) override;
 

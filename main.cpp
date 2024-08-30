@@ -30,7 +30,7 @@ int main(int argc, char *argv[]) {
 
 
     RaftServer server;
-    server.AddNode();
+    server.AddNode(port);
 
     if (ports.size() != 1 || ports[0] != 0) {
         server.ConnectNodes("127.0.0.1", ports);

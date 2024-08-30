@@ -51,6 +51,23 @@ public:
         StartAccept();
     }
 
+    void SetNode(std::unique_ptr<Node> node) {
+        node_ = std::move(node);
+        Message message{
+                acceptor_.local_endpoint(),
+                ""
+        };
+
+        RContext r_context{
+                message,
+                node_,
+                acceptor_.local_endpoint(),
+                static_cast<unsigned int>(peers_.size())
+        };
+        using namespace std::chrono_literals;
+        SetupTimer(r_context, 150ms);
+    }
+
     void StartAccept() {
         acceptor_.async_accept(socket_, [this](boost::system::error_code ec) {
             if (!ec) {
@@ -114,7 +131,7 @@ public:
                 static_cast<unsigned int>(peers_.size())
         };
 
-        node_->ReceiveMessage(std::move(r_context), o_context);
+        node_->ReceiveMessage(r_context, o_context);
         if (o_context.next_time_out) {
             SetupTimer(r_context, o_context.next_time_out.value());
         }

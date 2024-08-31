@@ -17,7 +17,7 @@ void Candidate::StartElection(const RContext& r_context, OContext &o_context) {
     std::cout << "Starting election..." << "\n";
 
     o_context.notifyAll = true;
-    auto timeout = std::uniform_int_distribution<>(150, 300)(rng_);
+    auto timeout = std::uniform_int_distribution<>(3 * BASE_TIMEOUT_FROM, 3 * BASE_TIMEOUT_TO)(rng_);
     o_context.set_timer(std::chrono::milliseconds(timeout));
 
     std::string voteRequest = "RequestVote term=" + std::to_string(currentTerm_) + "\n";
@@ -36,7 +36,7 @@ void Candidate::HandleVoteResponse(RContext r_context, OContext &o_context) {
         auto new_follower_node = std::make_unique<Follower>(currentTerm_);
         std::unique_ptr<Node> base_ptr = std::move(new_follower_node);
 
-        auto timeout = std::uniform_int_distribution<>(150, 300)(rng_);
+        auto timeout = std::uniform_int_distribution<>(3 * BASE_TIMEOUT_FROM, 3 * BASE_TIMEOUT_TO)(rng_);
         o_context.set_timer(std::chrono::milliseconds(timeout));
 
         std::swap(r_context.node_, base_ptr);
@@ -74,7 +74,7 @@ void Candidate::HandleHeartBeat(RContext r_context, OContext &o_context) {
         auto new_follower_node = std::make_unique<Follower>(currentTerm_);
         std::unique_ptr<Node> base_ptr = std::move(new_follower_node);
 
-        auto timeout = std::uniform_int_distribution<>(150, 300)(rng_);
+        auto timeout = std::uniform_int_distribution<>(3 * BASE_TIMEOUT_FROM, 3 * BASE_TIMEOUT_TO)(rng_);
         o_context.set_timer(std::chrono::milliseconds(timeout));
 
         std::swap(r_context.node_, base_ptr);
@@ -85,7 +85,7 @@ void Candidate::HandleHeartBeat(RContext r_context, OContext &o_context) {
         auto new_follower_node = std::make_unique<Follower>(currentTerm_);
         std::unique_ptr<Node> base_ptr = std::move(new_follower_node);
 
-        auto timeout = std::uniform_int_distribution<>(150, 300)(rng_);
+        auto timeout = std::uniform_int_distribution<>(3 * BASE_TIMEOUT_FROM, 3 * BASE_TIMEOUT_TO)(rng_);
         o_context.set_timer(std::chrono::milliseconds(timeout));
 
         std::swap(r_context.node_, base_ptr);
@@ -107,7 +107,7 @@ void Candidate::HandleVoteRequest(RContext r_context, OContext &o_context) {
         new_follower_node->HandleVoteRequest(r_context, o_context);
         std::unique_ptr<Node> base_ptr = std::move(new_follower_node);
 
-        auto timeout = std::uniform_int_distribution<>(150, 300)(rng_);
+        auto timeout = std::uniform_int_distribution<>(3 * BASE_TIMEOUT_FROM, 3 * BASE_TIMEOUT_TO)(rng_);
         o_context.set_timer(std::chrono::milliseconds(timeout));
 
         std::swap(r_context.node_, base_ptr);

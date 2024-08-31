@@ -38,7 +38,7 @@ void Follower::HandleVoteRequest(RContext r_context, OContext &o_context) {
 
         o_context.send_msg(voteGranted);
 
-        auto timeout = std::uniform_int_distribution<>(150, 300)(rng_);
+        auto timeout = std::uniform_int_distribution<>(3 * BASE_TIMEOUT_FROM, 3 * BASE_TIMEOUT_TO)(rng_);
         o_context.set_timer(std::chrono::milliseconds(timeout));
     }
 }
@@ -61,7 +61,7 @@ void Follower::HandleHeartBeat(RContext r_context, OContext &o_context) {
     if (receivedTerm >= currentTerm_) {
         currentTerm_ = receivedTerm;
 
-        auto timeout = std::uniform_int_distribution<>(150, 300)(rng_);
+        auto timeout = std::uniform_int_distribution<>(3 * BASE_TIMEOUT_FROM, 3 * BASE_TIMEOUT_TO)(rng_);
         o_context.set_timer(std::chrono::milliseconds(timeout));
     }
 

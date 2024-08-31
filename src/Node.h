@@ -8,6 +8,9 @@
 
 enum class NodeRole {Candidate, Follower, Leader};
 
+constexpr inline auto BASE_TIMEOUT_FROM = 50;
+constexpr inline auto BASE_TIMEOUT_TO = 100;
+
 class Node {
 protected:
     std::stack<int> log_;

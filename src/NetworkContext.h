@@ -19,7 +19,7 @@ protected:
     std::unique_ptr<Node> node_;
     boost::asio::steady_timer timer_;
 
-    void SetupTimer(const RContext& r_context, std::chrono::milliseconds ms) {
+    void SetupTimer(const RContext &r_context, std::chrono::milliseconds ms) {
         timer_.expires_after(ms);
         std::cout << "Election timeout is " << ms.count() << "ms\n";
         timer_.async_wait([this, r_context](const boost::system::error_code &error) {
@@ -35,13 +35,15 @@ protected:
                     if (o_context.notifyAll) {
                         SendMessageToAllPeers(o_context.message.value());
                     } else {
-                        SendMessageToPeer(socket_by_peer(r_context.message.sender.value()), o_context.message.value());                    }
+                        SendMessageToPeer(socket_by_peer(r_context.message.sender.value()), o_context.message.value());
+                    }
                 }
             } else if (error != boost::asio::error::operation_aborted) {
                 std::cerr << "Timer error: " << error.message() << "\n";
             }
         });
     }
+
 public:
     NetworkContext(boost::asio::io_context &io_context, short port)
             : io_context_(io_context), acceptor_(io_context, tcp::endpoint(tcp::v4(), port)), socket_(io_context),
@@ -103,7 +105,8 @@ public:
         boost::asio::async_write(*socket, boost::asio::buffer(message),
                                  [message, socket](boost::system::error_code ec, std::size_t length) {
                                      if (!ec) {
-                                         std::cout << "Message sent to peer " << socket->remote_endpoint() << ": " << message
+                                         std::cout << "Message sent to peer " << socket->remote_endpoint() << ": "
+                                                   << message
                                                    << "\n";
                                      }
                                  });
@@ -120,8 +123,8 @@ public:
         auto rem = socket.remote_endpoint();
         //extract data
         Message message{
-            std::optional{rem},
-            std::move(data)
+                std::optional{rem},
+                std::move(data)
         };
 
         RContext r_context{
@@ -145,13 +148,14 @@ public:
 
 private:
     std::shared_ptr<tcp::socket> socket_by_peer(const tcp::endpoint &endpoint) {
-        for (auto &socket : peers_) {
+        for (auto &socket: peers_) {
             if (socket->remote_endpoint() != endpoint) continue;
             return socket;
         }
         // handle properly
         throw "Some problems!";
     }
+
     class Session : public std::enable_shared_from_this<Session> {
     private:
         std::shared_ptr<tcp::socket> socket_;
@@ -161,7 +165,8 @@ private:
         void ReadMessage() {
             auto self(shared_from_this());
             boost::asio::async_read_until(*socket_, boost::asio::dynamic_buffer(data_), '\n',
-                                          [this, self, &socket_=socket_](boost::system::error_code ec, std::size_t length) {
+                                          [this, self, &socket_ = socket_](boost::system::error_code ec,
+                                                                           std::size_t length) {
                                               if (!ec) {
                                                   std::cout << "Received message: " << data_ << "\n";
                                                   node_->ReceiveMessage(data_, *socket_);

@@ -43,9 +43,26 @@ public:
     }
 
     unsigned int ExtractTermFromMessage(const std::string &message) {
-        size_t pos = message.find("term=");
+        size_t pos = message.find("receivedTerm=");
         if (pos != std::string::npos) {
-            return std::stoi(message.substr(pos + 5));
+            pos += 13;
+            std::cout << "Position after 'receivedTerm=': " << pos << std::endl;
+            std::string termStr;
+            while (pos < message.size() && std::isdigit(message[pos])) {
+                termStr += message[pos];
+                ++pos;
+            }
+            std::cout << "Extracted term string: '" << termStr << "'" << std::endl;
+
+            if (!termStr.empty()) {
+                try {
+                    return std::stoi(termStr);
+                } catch (const std::exception &e) {
+                    std::cerr << "Error extracting term: " << e.what() << std::endl;
+                }
+            }
+        } else {
+            std::cerr << "Substring 'receivedTerm=' not found in message." << std::endl;
         }
         return 0;
     }

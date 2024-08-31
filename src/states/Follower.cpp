@@ -33,12 +33,13 @@ void Follower::HandleVoteRequest(RContext r_context, OContext &o_context) {
     auto sender_endpoint = r_context.message.sender.value();
     if (IsDefaultEndpoint(votedFor_) || votedFor_ == sender_endpoint) {
         isVoted = true;
+        std::cout << "Voted for: " << sender_endpoint.address() << ": " << sender_endpoint.port() << "\n";
         votedFor_ = sender_endpoint;
         std::string voteGranted = "VoteGranted=true receivedTerm=" + std::to_string(currentTerm_) + "\n";
 
         o_context.send_msg(voteGranted);
 
-        auto timeout = std::uniform_int_distribution<>(150, 300)(rng_);
+        auto timeout = std::uniform_int_distribution<>(TIMEOUT_FROM, TIMEOUT_TO)(rng_);
         o_context.set_timer(std::chrono::milliseconds(timeout));
     }
 }

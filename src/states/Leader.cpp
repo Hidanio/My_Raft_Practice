@@ -29,7 +29,7 @@ void Leader::HandleElectionTimeout(RContext r_context, OContext &o_context) {
 }
 
 void Leader::SendHeartBeat(RContext r_context, OContext &o_context) {
-    std::string heartbeat = "HeartBeat term=" + std::to_string(currentTerm_) + " RAVE RAVE HEARTBEAT" + "\n";
+    std::string heartbeat = "HeartBeat receivedTerm=" + std::to_string(currentTerm_) + " RAVE RAVE HEARTBEAT" + "\n";
 
     o_context.send_msg(heartbeat);
     o_context.notifyAll = true;

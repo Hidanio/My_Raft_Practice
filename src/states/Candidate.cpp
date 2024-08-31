@@ -17,7 +17,7 @@ void Candidate::StartElection(const RContext& r_context, OContext &o_context) {
     std::cout << "Starting election..." << "\n";
 
     o_context.notifyAll = true;
-    auto timeout = std::uniform_int_distribution<>(150, 300)(rng_);
+    auto timeout = std::uniform_int_distribution<>(TIMEOUT_FROM, TIMEOUT_TO)(rng_);
     o_context.set_timer(std::chrono::milliseconds(timeout));
 
     std::string voteRequest = "RequestVote term=" + std::to_string(currentTerm_) + "\n";

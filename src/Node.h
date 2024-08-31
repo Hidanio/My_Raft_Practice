@@ -7,6 +7,8 @@
 #include "Contexts.h"
 
 enum class NodeRole {Candidate, Follower, Leader};
+constexpr inline auto TIMEOUT_FROM = 1500;
+constexpr inline auto TIMEOUT_TO = 3000;
 
 class Node {
 protected:
@@ -24,7 +26,7 @@ public:
     virtual void HandleVoteResponse(RContext r_context, OContext &o_context) =0;
     virtual void HandleHeartBeat(RContext r_context, OContext &o_context) =0;
 
-    void ReceiveMessage(const RContext& r_context, OContext &o_context) {
+    void ReceiveMessage(RContext& r_context, OContext &o_context) {
         if (r_context.message.message.find("RequestVote") != std::string::npos) {
             HandleVoteRequest(r_context, o_context);
         } else if (r_context.message.message.find("VoteGranted") != std::string::npos) {

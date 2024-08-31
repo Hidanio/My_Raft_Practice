@@ -61,7 +61,7 @@ void Follower::HandleHeartBeat(RContext r_context, OContext &o_context) {
     if (receivedTerm >= currentTerm_) {
         currentTerm_ = receivedTerm;
 
-        auto timeout = std::uniform_int_distribution<>(150, 300)(rng_);
+        auto timeout = std::uniform_int_distribution<>(TIMEOUT_FROM, TIMEOUT_TO)(rng_);
         o_context.set_timer(std::chrono::milliseconds(timeout));
     }
 

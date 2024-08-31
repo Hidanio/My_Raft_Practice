@@ -111,6 +111,7 @@ public:
 
     void SendMessageToAllPeers(const std::string &message) {
         for (const auto &peer: peers_) {
+            std::cout << "peer: " <<  peer.address() << ": " << peer.port() << "\n";
             SendMessageToPeer(peer, message);
         }
     }
@@ -135,10 +136,16 @@ public:
         if (o_context.next_time_out) {
             SetupTimer(r_context, o_context.next_time_out.value());
         }
-
+        if (!o_context.message.has_value()){
+            throw "2";
+        }
         if (o_context.notifyAll) {
             SendMessageToAllPeers(o_context.message.value());
         } else {
+            if (!r_context.message.sender.has_value()){
+                throw "1";
+            }
+
             SendMessageToPeer(r_context.message.sender.value(), o_context.message.value());
         }
     }

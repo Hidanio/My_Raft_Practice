@@ -19,7 +19,7 @@ std::vector<short> SplitStringByComma(const std::string& str) {
 }
 
 int main(int argc, char *argv[]) {
-    if (argc != 4) {
+    if (argc != 3) {
         std::cerr << "Usage: raft_node <port> <peer_ports_comma_sep>\n";
         return 1;
     }

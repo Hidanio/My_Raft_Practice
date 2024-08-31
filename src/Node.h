@@ -8,8 +8,8 @@
 
 enum class NodeRole {Candidate, Follower, Leader};
 
-constexpr inline auto BASE_TIMEOUT_FROM = 50;
-constexpr inline auto BASE_TIMEOUT_TO = 100;
+constexpr inline auto BASE_TIMEOUT_FROM = 500;
+constexpr inline auto BASE_TIMEOUT_TO = 1000;
 
 class Node {
 protected:

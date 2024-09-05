@@ -31,7 +31,7 @@ public:
             HandleVoteRequest(r_context, o_context);
         } else if (r_context.message.message.find("VoteGranted") != std::string::npos) {
             HandleVoteResponse(r_context, o_context);
-        } else if (r_context.message.message.find("Heartbeat") != std::string::npos) {
+        } else if (r_context.message.message.find("HeartBeat") != std::string::npos) {
             HandleHeartBeat(r_context, o_context);
         }
 

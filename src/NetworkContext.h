@@ -70,46 +70,55 @@ public:
     }
 
     void StartAccept() {
-        // socket_ set for each new accept
-        acceptor_.async_accept(socket_, [this](boost::system::error_code ec) {
+        auto new_socket = std::make_shared<tcp::socket>(io_context_);
+        acceptor_.async_accept(*new_socket, [this, new_socket](boost::system::error_code ec) {
             if (!ec) {
-                auto peer = socket_.remote_endpoint();
-                auto socket = std::make_shared<tcp::socket>(std::move(socket_));
-
-                peers_.emplace_back(socket);
-                std::make_shared<Session>(socket, this)->Start();
+                auto peer = new_socket->remote_endpoint();
+                peers_.emplace_back(new_socket);
+                std::make_shared<Session>(new_socket, this)->Start(); // one session - one socket
                 std::cout << "Accepted connection from " << peer << "\n";
-                //potential node-> onAccept; <- should we understand which node?
-
             }
             StartAccept();
         });
     }
 
     void ConnectToPeer(const std::string &host, short port) {
-        auto peer = std::make_shared<tcp::socket>(io_context_);
+        auto peer_socket = std::make_shared<tcp::socket>(io_context_);
         tcp::resolver resolver(io_context_);
         auto endpoints = resolver.resolve(host, std::to_string(port));
-        boost::asio::async_connect(*peer, endpoints,
-                                   [this, host, port, peer](boost::system::error_code ec, const tcp::endpoint &) {
+
+        boost::asio::async_connect(*peer_socket, endpoints,
+                                   [this, peer_socket, host, port](boost::system::error_code ec, const tcp::endpoint &) {
                                        if (!ec) {
                                            std::cout << "Connected to peer at " << host << ":" << port << "\n";
-                                           peers_.push_back(peer);
+                                           peers_.push_back(peer_socket);
+                                           std::make_shared<Session>(peer_socket, this)->Start();
+                                       } else {
+                                           std::cerr << "Error connecting to peer: " << ec.message() << "\n";
                                        }
                                    });
     }
 
-    void SendMessageToPeer(std::shared_ptr<tcp::socket> socket, std::string message) {
-        std::cout << "Trying send message to peer " << socket->remote_endpoint() << ": " << message
-                  << "\n";
-        boost::asio::async_write(*socket, boost::asio::buffer(message),
-                                 [message, socket](boost::system::error_code ec, std::size_t length) {
-                                     if (!ec) {
-                                         std::cout << "Message sent to peer " << socket->remote_endpoint() << ": "
-                                                   << message
-                                                   << "\n";
-                                     }
-                                 });
+    void SendMessageToPeer(std::shared_ptr<tcp::socket> socket, const std::string &message) {
+        if (socket && socket->is_open()) {
+            try {
+                std::cout << "Trying to send message to peer " << socket->remote_endpoint() << ": " << message << "\n";
+                boost::asio::async_write(*socket, boost::asio::buffer(message),
+                                         [message, socket](boost::system::error_code ec, std::size_t length) {
+                                             if (!ec) {
+                                                 std::cout << "Message sent to peer " << socket->remote_endpoint() << ": "
+                                                           << message << "\n";
+                                             } else {
+                                                 std::cerr << "Error sending message: " << ec.message() << "\n";
+                                             }
+                                         });
+            } catch (const boost::system::system_error &e) {
+                std::cerr << "Error: remote_endpoint failed: " << e.what() << "\n";
+                //TODO: if closed connection -> remove from peers_ | peers_ maybe list?
+            }
+        } else {
+            std::cerr << "Socket is not open. Cannot send message.\n";
+        }
     }
 
     void SendMessageToAllPeers(const std::string &message) {
@@ -142,7 +151,11 @@ public:
         if (o_context.notifyAll) {
             SendMessageToAllPeers(o_context.message.value());
         } else {
-            SendMessageToPeer(socket_by_peer(r_context.message.sender.value()), o_context.message.value());
+            if(o_context.message){
+                std::cout << "New message to sent" << "\n";
+                SendMessageToPeer(socket_by_peer(r_context.message.sender.value()), o_context.message.value());
+            }
+         //   SendMessageToPeer(socket_by_peer(r_context.message.sender.value()), o_context.message.value());
         }
     }
 
@@ -165,20 +178,19 @@ private:
         void ReadMessage() {
             auto self(shared_from_this());
             boost::asio::async_read_until(*socket_, boost::asio::dynamic_buffer(data_), '\n',
-                                          [this, self, &socket_ = socket_](boost::system::error_code ec,
-                                                                           std::size_t length) {
+                                          [this, self](boost::system::error_code ec, std::size_t length) {
                                               if (!ec) {
                                                   std::cout << "Received message: " << data_ << "\n";
                                                   node_->ReceiveMessage(data_, *socket_);
                                                   data_.clear();
-                                                  ReadMessage();
+                                                  ReadMessage();  // wait again message
                                               }
                                           });
         }
 
     public:
         Session(std::shared_ptr<tcp::socket> socket, NetworkContext *node)
-                : socket_(socket), node_(node) {}
+                : socket_(std::move(socket)), node_(node) {}
 
         void Start() {
             ReadMessage();

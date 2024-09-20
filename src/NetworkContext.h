@@ -114,7 +114,8 @@ public:
                                          });
             } catch (const boost::system::system_error &e) {
                 std::cerr << "Error: remote_endpoint failed: " << e.what() << "\n";
-                //TODO: if closed connection -> remove from peers_ | peers_ maybe list?
+                auto it = std::find(peers_.begin(), peers_.end(), socket);
+                peers_.erase(it);
             }
         } else {
             std::cerr << "Socket is not open. Cannot send message.\n";

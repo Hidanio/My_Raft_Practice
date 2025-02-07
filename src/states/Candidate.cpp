@@ -10,7 +10,7 @@ void Candidate::HandleElectionTimeout(RContext r_context, OContext &o_context) {
     StartElection(r_context, o_context);
 }
 
-void Candidate::StartElection(const RContext& r_context, OContext &o_context) {
+void Candidate::StartElection(const RContext &r_context, OContext &o_context) {
     votesReceived_ = 1;
     ++currentTerm_;
     votedFor_ = r_context.id;
@@ -31,7 +31,8 @@ void Candidate::HandleVoteResponse(RContext r_context, OContext &o_context) {
     auto message = r_context.message.message;
     unsigned int receivedTerm = ExtractTermFromMessage(message);
 
-    std::cout << "HandleVoteResponse:" << "receivedTerm= " << receivedTerm << " && " << "currentTerm= " << currentTerm_ << "\n";
+    std::cout << "HandleVoteResponse:" << "receivedTerm= " << receivedTerm << " && " << "currentTerm= " << currentTerm_
+              << "\n";
 
     if (receivedTerm > currentTerm_) {
         currentTerm_ = receivedTerm;
@@ -47,7 +48,8 @@ void Candidate::HandleVoteResponse(RContext r_context, OContext &o_context) {
         return;
     }
 
-    std::cout << "HandleVoteResponse:" << "receivedTerm= " << receivedTerm << " && " << "currentTerm= " << currentTerm_ << "\n";
+    std::cout << "HandleVoteResponse:" << "receivedTerm= " << receivedTerm << " && " << "currentTerm= " << currentTerm_
+              << "\n";
     if (receivedTerm == currentTerm_ && message.find("VoteGranted=true") != std::string::npos) {
         ++votesReceived_;
         std::cout << "Total votes: " << votesReceived_ << "\n";
@@ -76,8 +78,9 @@ void Candidate::HandleHeartBeat(RContext r_context, OContext &o_context) {
     if (receivedTerm > currentTerm_) {
         currentTerm_ = receivedTerm;
 
-        auto new_follower_node = std::make_unique<Follower>(currentTerm_);
-        std::unique_ptr<Node> base_ptr = std::move(new_follower_node);
+        std::unique_ptr<Node> base_ptr = std::make_unique<Follower>(currentTerm_);
+        // auto new_follower_node = std::make_unique<Follower>(currentTerm_);
+        //base_ptr = std::move(new_follower_node);
 
         auto timeout = std::uniform_int_distribution<>(TIMEOUT_FROM, TIMEOUT_TO)(rng_);
         o_context.set_timer(std::chrono::milliseconds(timeout));
@@ -105,7 +108,8 @@ void Candidate::HandleVoteRequest(RContext r_context, OContext &o_context) {
 
     unsigned int receivedTerm = ExtractTermFromMessage(message);
 
-    std::cout << "HandleVoteRequest: " << "receivedTerm= " << receivedTerm << " && " << "currentTerm= " << currentTerm_ << "\n";
+    std::cout << "HandleVoteRequest: " << "receivedTerm= " << receivedTerm << " && " << "currentTerm= " << currentTerm_
+              << "\n";
 
     if (receivedTerm > currentTerm_) {
         currentTerm_ = receivedTerm;

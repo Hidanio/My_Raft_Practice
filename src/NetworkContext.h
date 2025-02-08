@@ -47,7 +47,7 @@ protected:
                     }
                 }
             } else if (error != boost::asio::error::operation_aborted) {
-                std::cerr << "Timer error: " << error.message() << "\n";
+                std::cerr << "Timer error: " << error.message() << std::endl;
             }
         });
     }
@@ -56,7 +56,7 @@ public:
     NetworkContext(boost::asio::io_context &io_context, short port)
             : io_context_(io_context), acceptor_(io_context, tcp::endpoint(tcp::v4(), port)),
               timer_(io_context), reconnect_timer_(io_context) {
-        std::cout << "Node created on port " << port << "\n";
+        std::cout << "Node created on port " << port << std::endl;
         StartAccept();
     }
 
@@ -84,7 +84,7 @@ public:
                 auto peer = new_socket->remote_endpoint();
                 peers_.emplace_back(new_socket);
                 std::make_shared<Session>(new_socket, this)->Start(); // one session - one socket
-                std::cout << "Accepted connection from " << peer << "\n";
+                std::cout << "Accepted connection from " << peer << std::endl;
             }
             StartAccept();
         });
@@ -99,14 +99,14 @@ public:
                                    [this, peer_socket, host, port](boost::system::error_code ec,
                                                                    const tcp::endpoint &) {
                                        if (!ec) {
-                                           std::cout << "Connected to peer at " << host << ":" << port << "\n";
+                                           std::cout << "Connected to peer at " << host << ":" << port << std::endl;
                                            std::string key = host + ":" + std::to_string(port);
                                            host_port_to_socket_[key] = peer_socket;
                                            socket_to_host_port_[peer_socket] = key;
                                            peers_.push_back(peer_socket);
                                            std::make_shared<Session>(peer_socket, this)->Start();
                                        } else {
-                                           std::cerr << "Error connecting to peer: " << ec.message() << "\n";
+                                           std::cerr << "Error connecting to peer: " << ec.message() << std::endl;
                                        }
                                    });
     }
@@ -117,12 +117,12 @@ public:
                 boost::system::error_code ec;
                 auto remote = socket->remote_endpoint(ec);
                 if (ec) {
-                    std::cerr << "remote_endpoint error: " << ec.message() << "\n";
+                    std::cerr << "remote_endpoint error: " << ec.message() << std::endl;
                     HandleDisconnect(socket);
                     return;
                 }
 
-                std::cout << "Trying to send message to peer " << remote << ": " << message << "\n";
+                std::cout << "Trying to send message to peer " << remote << ": " << message << std::endl;
                 auto self = shared_from_this();
                 boost::asio::async_write(*socket, boost::asio::buffer(message),
                                          [message, socket, self, &remote](boost::system::error_code ec,
@@ -130,9 +130,9 @@ public:
                                              if (!ec) {
                                                  std::cout << "Message sent to peer " << remote
                                                            << ": "
-                                                           << message << "\n";
+                                                           << message << std::endl;
                                              } else {
-                                                 std::cerr << "Error sending message: " << ec.message() << "\n";
+                                                 std::cerr << "Error sending message: " << ec.message() << std::endl;
                                                  if (ec == boost::asio::error::eof ||
                                                      ec == boost::asio::error::connection_reset ||
                                                      ec == boost::asio::error::broken_pipe) {
@@ -141,10 +141,8 @@ public:
                                              }
                                          });
             } catch (const boost::system::system_error &e) {
-                std::cerr << "Error: remote_endpoint failed: " << e.what() << "\n";
+                std::cerr << "Error: remote_endpoint failed: " << e.what() << std::endl;
                 HandleDisconnect(socket);
-/*                auto it = std::find(peers_.begin(), peers_.end(), socket);
-                if (it != peers_.end()) peers_.erase(it);*/
             }
         } else {
             std::cerr << "Socket " << socket.get() << " is not open. Cannot send message.\n";
@@ -160,32 +158,35 @@ public:
         auto self = shared_from_this();
         reconnect_timer_.async_wait([self, host, port](boost::system::error_code ec) {
             if (!ec) {
-                std::cout << "Reconnecting to specific host:port " << host << ":" << port << "\n";
+                std::cout << "Reconnecting to specific host:port " << host << ":" << port << std::endl;
                 self->ConnectToPeer(host, port);
             } else {
-                std::cerr << "Reconnect timer error: " << ec.message() << "\n";
+                std::cerr << "Reconnect timer error: " << ec.message() << std::endl;
             }
         });
     }
 
     void HandleDisconnect(const std::shared_ptr<tcp::socket> &socket) {
-        std::cout << "Connection lost. Attempting to reconnect..." << "\n";
+        std::cout << "Connection lost. Attempting to reconnect..." << std::endl;
         std::cout << "HandleDisconnect called for socket " << socket.get() << std::endl;
 
-        boost::system::error_code ec;
         auto it = std::find(peers_.begin(), peers_.end(), socket);
         if (it != peers_.end()) {
             peers_.erase(it);
-            std::cout << socket.get() << "\n";
+            std::cout << socket.get() << std::endl;
         }
 
-        std::cout << "Try to close.." << "\n";
+        std::cout << "Try to close.." << std::endl;
 
-        socket->close(ec);
-        std::cout << "Closed.." << "\n";
+        boost::system::error_code ec;
+        if (socket->is_open()) {
+            socket->close(ec);
+        }
+
+        std::cout << "Closed.." << std::endl;
 
         if (ec) {
-            std::cerr << "Error closing socket: " << ec.message() << "\n";
+            std::cerr << "Error closing socket: " << ec.message() << std::endl;
         }
 
         // Let's find host:port for this socket
@@ -238,21 +239,34 @@ public:
             SendMessageToAllPeers(o_context.message.value());
         } else {
             if (o_context.message) {
-                std::cout << "New message to sent" << "\n";
+                std::cout << "New message to sent" << std::endl;
+                std::cout << r_context.message.sender.has_value() << std::endl;
 
                 if (socket_by_peer(r_context.message.sender.value()) == nullptr) {
                     return;
                 }
+                std::cout << "Sending message" << std::endl;
+
                 SendMessageToPeer(socket_by_peer(r_context.message.sender.value()), o_context.message.value());
             }
-            //   SendMessageToPeer(socket_by_peer(r_context.message.sender.value()), o_context.message.value());
         }
     }
 
 private:
     std::shared_ptr<tcp::socket> socket_by_peer(const tcp::endpoint &endpoint) {
         for (auto &socket: peers_) {
-            if (socket->remote_endpoint() != endpoint) continue;
+            boost::system::error_code ec;
+            auto rem = socket->remote_endpoint(ec);
+            if (ec) {
+                std::cerr << "Failed to get remote endpoint: " << ec.message() << std::endl;
+                continue;
+            }
+
+            if (rem != endpoint) {
+                std::cout << "find socket" << socket->remote_endpoint() << std::endl;
+
+                continue;
+            }
             return socket;
         }
         // handle properly
@@ -270,12 +284,12 @@ private:
             boost::asio::async_read_until(*socket_, boost::asio::dynamic_buffer(data_), '\n',
                                           [this, self](boost::system::error_code ec, std::size_t length) {
                                               if (!ec) {
-                                                  std::cout << "Received message: " << data_ << "\n";
+                                                  std::cout << "Received message: " << data_ << std::endl;
                                                   node_->ReceiveMessage(data_, *socket_);
                                                   data_.clear();
                                                   ReadMessage();  // wait again message
                                               } else {
-                                                  std::cerr << "Read error: " << ec.message() << "\n";
+                                                  std::cerr << "Read error: " << ec.message() << std::endl;
                                                   node_->HandleDisconnect(socket_);
                                               }
                                           });

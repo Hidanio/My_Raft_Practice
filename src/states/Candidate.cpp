@@ -79,8 +79,6 @@ void Candidate::HandleHeartBeat(RContext r_context, OContext &o_context) {
         currentTerm_ = receivedTerm;
 
         std::unique_ptr<Node> base_ptr = std::make_unique<Follower>(currentTerm_);
-        // auto new_follower_node = std::make_unique<Follower>(currentTerm_);
-        //base_ptr = std::move(new_follower_node);
 
         auto timeout = std::uniform_int_distribution<>(TIMEOUT_FROM, TIMEOUT_TO)(rng_);
         o_context.set_timer(std::chrono::milliseconds(timeout));

@@ -55,6 +55,7 @@ void Follower::HandleElectionTimeout(RContext r_context, OContext &o_context) {
     std::swap(r_context.node_, base_ptr);
 }
 
+//TODO: Here we can sync our LOG, если не совпадает, то вызовем ?HandleAppendEntries?
 void Follower::HandleHeartBeat(RContext r_context, OContext &o_context) {
     auto message = r_context.message.message;
     unsigned int receivedTerm = ExtractTermFromMessage(message);
@@ -69,6 +70,26 @@ void Follower::HandleHeartBeat(RContext r_context, OContext &o_context) {
     std::cout << "Received heartBeat message: " << message << "\n";
 }
 
+void Follower::HandleAppendEntries(RContext r_context, OContext &o_context) {
+    // Извлечение полей из AppendEntries запроса
+    // Если лог подписчика совпадает с prevLogIndex и prevLogTerm,
+    // добавить новые записи (если есть) и обновить commit index, а также выполнить действие (выведем в текстовой файл например для тестов)
+    // Если нет – отправить ?false?
+
+    // Сбросить таймер выборов (так как пришёл своего рода heartbeat)
+    auto timeout = std::uniform_int_distribution<>(TIMEOUT_FROM, TIMEOUT_TO)(rng_);
+    o_context.set_timer(std::chrono::milliseconds(timeout));
+}
+
 void Follower::SendHeartBeat(RContext r_context, OContext &o_context) {
 
 }
+
+void Follower::ReceiveDataFromClient(RContext r_context, OContext &o_context) {
+
+}
+
+void Follower::HandleAnswerAppendFromFollower(RContext r_context, OContext &o_context) {
+
+}
+

@@ -54,7 +54,7 @@ void Candidate::HandleVoteResponse(RContext r_context, OContext &o_context) {
         ++votesReceived_;
         std::cout << "Total votes: " << votesReceived_ << "\n";
 
-        if (votesReceived_ > r_context.totalPeers / 2) {
+        if (votesReceived_ > r_context.totalPeers / 2) { //TODO: FIX THIS, we should count total peers on global -> not active!
             std::cout << "The king is dead, long live the king!" << "\n";
 
             auto new_leader_node = std::make_unique<Leader>(currentTerm_);
@@ -139,5 +139,17 @@ bool Candidate::WriteLog() {
 }
 
 void Candidate::SendHeartBeat(RContext r_context, OContext &o_context) {
+
+}
+
+void Candidate::HandleAppendEntries(RContext r_context, OContext &o_context) {
+
+}
+
+void Candidate::ReceiveDataFromClient(RContext r_context, OContext &o_context) {
+
+}
+
+void Candidate::HandleAnswerAppendFromFollower(RContext r_context, OContext &o_context) {
 
 }

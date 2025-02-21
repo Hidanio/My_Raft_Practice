@@ -24,4 +24,10 @@ public:
     void HandleHeartBeat(RContext r_context, OContext &o_context) override;
 
     void SendHeartBeat(RContext r_context, OContext &o_context) override;
+
+    void ReceiveDataFromClient(RContext r_context, OContext &o_context) override;
+
+    void HandleAppendEntries(RContext r_context, OContext &o_context) override;
+
+    void HandleAnswerAppendFromFollower(RContext r_context, OContext &o_context) override;
 };

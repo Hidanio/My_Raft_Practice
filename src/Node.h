@@ -6,7 +6,9 @@
 #include "boost/asio.hpp"
 #include "Contexts.h"
 
-enum class NodeRole {Candidate, Follower, Leader};
+enum class NodeRole {
+    Candidate, Follower, Leader
+};
 constexpr inline auto TIMEOUT_FROM = 1500;
 constexpr inline auto TIMEOUT_TO = 3000;
 
@@ -18,21 +20,37 @@ protected:
     tcp::endpoint votedFor_;
     unsigned currentTerm_;
 
+    std::vector<std::tuple<std::string, unsigned>> log;
 public:
     virtual bool WriteLog() = 0;
-    virtual void HandleElectionTimeout(RContext r_context,OContext &o_context) = 0;
-    virtual void SendHeartBeat(RContext r_context, OContext &o_context) = 0;
-    virtual void HandleVoteRequest(RContext r_context, OContext &o_context) =0;
-    virtual void HandleVoteResponse(RContext r_context, OContext &o_context) =0;
-    virtual void HandleHeartBeat(RContext r_context, OContext &o_context) =0;
 
-    void ReceiveMessage(RContext& r_context, OContext &o_context) {
+    virtual void HandleElectionTimeout(RContext r_context, OContext &o_context) = 0;
+
+    virtual void SendHeartBeat(RContext r_context, OContext &o_context) = 0;
+
+    virtual void HandleVoteRequest(RContext r_context, OContext &o_context) = 0;
+
+    virtual void HandleVoteResponse(RContext r_context, OContext &o_context) = 0;
+
+    virtual void HandleHeartBeat(RContext r_context, OContext &o_context) = 0;
+
+    virtual void ReceiveDataFromClient(RContext r_context, OContext &o_context) = 0;
+
+    virtual void HandleAnswerAppendFromFollower(RContext r_context, OContext &o_context) = 0;
+
+    virtual void HandleAppendEntries(RContext r_context, OContext &o_context) = 0;
+
+    void ReceiveMessage(RContext &r_context, OContext &o_context) {
         if (r_context.message.message.find("RequestVote") != std::string::npos) {
             HandleVoteRequest(r_context, o_context);
         } else if (r_context.message.message.find("VoteGranted") != std::string::npos) {
             HandleVoteResponse(r_context, o_context);
         } else if (r_context.message.message.find("HeartBeat") != std::string::npos) {
             HandleHeartBeat(r_context, o_context);
+        } else if (r_context.message.message.find("Client:") != std::string::npos) {
+            ReceiveDataFromClient(r_context, o_context);
+        } else if (r_context.message.message.find("WriteLog:") != std::string::npos) {
+            HandleAppendEntries(r_context, o_context);
         }
 
 /*        using namespace std::chrono_literals;
@@ -67,11 +85,11 @@ public:
         return 0;
     }
 
-    void SetRole(NodeRole role){
+    void SetRole(NodeRole role) {
         role_ = role;
     }
 
-    NodeRole GetRole(){
+    NodeRole GetRole() {
         return role_;
     }
 
@@ -79,15 +97,15 @@ public:
         return currentTerm_;
     }
 
-    void SetCurrentTerm(unsigned int term){
+    void SetCurrentTerm(unsigned int term) {
         currentTerm_ = term;
     }
 
-    bool IsDefaultEndpoint(const boost::asio::ip::tcp::endpoint& endpoint) {
+    bool IsDefaultEndpoint(const boost::asio::ip::tcp::endpoint &endpoint) {
         return (endpoint.address().is_unspecified() && endpoint.port() == 0);
     }
 
-    void OnTimer(const RContext& r_context, OContext &o_context) {
+    void OnTimer(const RContext &r_context, OContext &o_context) {
         switch (role_) {
             case NodeRole::Follower:
                 HandleElectionTimeout(r_context, o_context);
@@ -101,5 +119,5 @@ public:
         }
     }
 
-    virtual ~ Node()= default;
+    virtual ~ Node() = default;
 };

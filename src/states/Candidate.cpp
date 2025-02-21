@@ -137,3 +137,15 @@ bool Candidate::WriteLog() {
 void Candidate::SendHeartBeat(RContext r_context, OContext &o_context) {
 
 }
+
+void Candidate::HandleAppendEntries(RContext r_context, OContext &o_context) {
+
+}
+
+void Candidate::ReceiveDataFromClient(RContext r_context, OContext &o_context) {
+
+}
+
+void Candidate::HandleAnswerAppendFromFollower(RContext r_context, OContext &o_context) {
+
+}

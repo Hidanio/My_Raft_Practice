@@ -5,6 +5,9 @@
 
 class Leader : public Node {
 public:
+    unsigned commitIndex = -1;
+
+
     Leader(unsigned term);
 
     bool WriteLog() override;
@@ -18,4 +21,16 @@ public:
     void HandleElectionTimeout(RContext r_context, OContext &o_context) override;
 
     void SendHeartBeat(RContext r_context, OContext &o_context) override;
+
+    void ReceiveDataFromClient(RContext r_context, OContext &o_context) override;
+
+    std::string ExtractDataFromClientMessage(const std::string &message);
+
+    void HandleAnswerAppendFromFollower(RContext r_context, OContext &o_context) override;
+
+    void UpdateCommitIndex();
+
+    void SendAppendEntries(const RContext& r_context, OContext &o_context);
+
+    void HandleAppendEntries(RContext r_context, OContext &o_context) override;
 };

@@ -57,6 +57,7 @@ void Candidate::HandleVoteResponse(RContext r_context, OContext &o_context) {
 
             auto new_leader_node = std::make_unique<Leader>(currentTerm_);
             new_leader_node->SendHeartBeat(r_context, o_context);
+            SetRole(NodeRole::Leader);
             std::unique_ptr<Node> base_ptr = std::move(new_leader_node);
 
             std::swap(r_context.node_, base_ptr);

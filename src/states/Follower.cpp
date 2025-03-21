@@ -48,6 +48,7 @@ void Follower::HandleElectionTimeout(RContext r_context, OContext &o_context) {
     std::cout << "Follower election timeout. Becoming candidate..." << '\n';
 
     auto new_candidate_node = std::make_unique<Candidate>(currentTerm_);
+    SetRole(NodeRole::Candidate);
 
     new_candidate_node->StartElection(r_context, o_context);
     std::unique_ptr<Node> base_ptr = std::move(new_candidate_node);
